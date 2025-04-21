@@ -30,7 +30,31 @@ chmod +x vpc.sh
 ./vpc.sh
 
 
-#OUTPUT Screenshots
+#Output Screenshots  
+
+1. Menu  
+
+![](Screenshot/VPC1.png)
+
+2. Creating VPC   
+
+![](Screenshot/VPC2.png)  
+ 
+
+3. Creating Subnet  
+
+![](Screenshot/VPC3.png) 
+![](Screenshot/VPC4.png)  
+
+4. Internet gateway and Route Table  
+
+![](Screenshot/VPC5.png)  
+
+5. Security Group  
+
+![](Screenshot/VPC6.png)
+![](Screenshot/VPC7.png)
+
 
 
 
