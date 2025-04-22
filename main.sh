@@ -1,0 +1,46 @@
+#!/bin/bash
+
+source ./Scripts/vpc.sh
+
+
+# Dispatcher to call functions by name
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  if [[ -z "$1" ]]; then
+    echo "Choose an option:"
+    echo "1) Create VPC"
+    echo "2) Show VPCs"
+    echo "3) Delete VPC"
+    read -rp "Enter choice [1-3]: " choice
+
+    case $choice in
+      1)
+        echo -n "Enter min value for random number (default 1): "
+        read min
+        echo -n "Enter max value for random number (default 1000): "
+        read max
+        create_vpc "${min:-1}" "${max:-1000}"
+        ;;
+      2)
+        show_vpc
+        ;;
+      3)
+        echo -n "Enter VPC ID to delete: "
+        read vpc_id
+        delete_vpc_resources "$vpc_id"
+        ;;
+      *)
+        echo "Invalid choice."
+        exit 1
+        ;;
+    esac
+  else
+    if declare -f "$1" > /dev/null; then
+      func="$1"
+      shift
+      "$func" "$@"
+    else
+      echo "Function '$1' not found in $0"
+      exit 1
+    fi
+  fi
+fi

@@ -1,7 +1,6 @@
 #!/bin/bash
 
-
-my-rand() {
+my_rand() {
 local min=${1:-1}
 local max=${2:-1000}
 
@@ -14,55 +13,75 @@ local date_str=$(date +"%Y%m%d")
 echo "pallav-$1-${hash}-${date_str}"
 }
 
+
+
+
+
 create_vpc() {
 region=$(aws configure get region)
 echo "The region is $region"
 
-echo "Enter CIDR: "
-read cidr
+public_subnets=()
+private_subnets=()
 
+echo "Enter CIDR (Press enter for default cidr): "
+read cidr
 if [ -z "$cidr" ];then 
     cidr=10.0.0.0/16
 fi
-
 echo "The cidr is : $cidr"
 
 # Name should inlcude 4 parts, The name should be like —pallav-vpc-<date>-<random-number>
 
 min=${1:-1}
 max=${2:-1000}
-
-vpc_name=$(my-rand "$1" "$2")
+vpc_name=$(my_rand "$1" "$2")
 
 # Create VPC
-vpc_id=$(aws ec2 create-vpc --cidr-block $cidr --region $region --query 'Vpc.VpcId' --output text)
+vpc_id=$(aws ec2 create-vpc\
+ --cidr-block $cidr\
+  --region $region\
+   --query 'Vpc.VpcId'\
+    --output text)
 echo "VPC create with ID: $vpc_id"
 
 #Adding name to the VPC
-aws ec2 create-tags --resources $vpc_id --tags Key=Name,Value="$vpc_name" --region $region --output text
+aws ec2 create-tags\
+ --resources $vpc_id\
+  --tags Key=Name,Value="$vpc_name"\
+   --region $region\
+    --output text
 echo "VPC name is $vpc_name"
 
 
-# create tags for vpc
-echo "enter number tags you want for VPC "
-read num_tag
+            # create tags for vpc
+            echo "enter number tags you want for VPC "
+            read num_tag
 
-declare -a tags
-for ((i=0; i<num_tag; i++)); do
-    echo "Enter Key:"
-    read key
-    echo "Enter Value:"
-    read value
-    tags+=(Key=${key},Value=${value})
-done
-aws ec2 create-tags --resources $vpc_id --tags "${tags[@]}" --region $region --output text
+            declare -a tags
+            for ((i=0; i<num_tag; i++)); do
+                echo "Enter Key:"
+                read key
+                echo "Enter Value:"
+                read value
+                tags+=(Key=${key},Value=${value})
+            done
+            aws ec2 create-tags --resources $vpc_id --tags "${tags[@]}" --region $region --output text
 
 
-#create subnet
-echo "Number of subnets want to create (both public and private): "
+
+
+#create subnets
+subnet(){
+
+local subnet_type=$1
+subnet_type=$(echo "$subnet_type" | tr '[:upper:]' '[:lower:]')
+
+
+echo "Number of ${subnet_type} subnets want to create: "
 read num_subnet
 
-declare -a public_subnets private_subnets
+
 for ((i=1;i<=num_subnet;i++)); do
     echo -n "Enter Cidr for subnet $i(default 10.0.$i.0/24): "
     read sub_cidr
@@ -70,30 +89,33 @@ for ((i=1;i<=num_subnet;i++)); do
         sub_cidr=10.0.$i.0/24
     fi
 
-echo "should subnet be public or private?"
-read subnet_type
-subnet_type=$(echo "$subnet_type" | tr '[:upper:]' '[:lower:]')
-
-
 echo -n "Give availablity zone for subnet $i: (eg: us-east-1a) "
 read az
 
-subnet_id=$(aws ec2 create-subnet --vpc-id $vpc_id --cidr-block $sub_cidr --availability-zone $az --region $region --query 'Subnet.SubnetId' --output text) 
+subnet_id=$(aws ec2 create-subnet \
+                --vpc-id $vpc_id\
+                --cidr-block $sub_cidr\
+                --availability-zone $az\
+                --region $region\
+                --query 'Subnet.SubnetId'\
+                --output text) 
 echo "Subnet created with id : $subnet_id"
 
-#Adding tags to subnet
-echo "Number of tags for subnet: "
-read num_tag_subnet
 
-declare -a tags_subnet
-for ((j=0;j<num_tag_subnet;j++)); do
-echo "Enter Key: "
-read key
-echo "Enter Value: "
-read value
-tags_subnet+=(Key=${key},Value=${value})
-done
-aws ec2 create-tags --resources $subnet_id --tags "${tags_subnet[@]}" --region $region --output text
+
+            #Adding tags to subnet
+            echo "Number of tags for subnet: "
+            read num_tag_subnet
+
+            declare -a tags_subnet
+            for ((j=0;j<num_tag_subnet;j++)); do
+            echo "Enter Key: "
+            read key
+            echo "Enter Value: "
+            read value
+            tags_subnet+=(Key=${key},Value=${value})
+            done
+            aws ec2 create-tags --resources $subnet_id --tags "${tags_subnet[@]}" --region $region --output text
 
 
 if [ "$subnet_type" == "public" ];then
@@ -102,6 +124,31 @@ else
 private_subnets+=("$subnet_id")
 fi
 done
+}
+
+
+echo "Do you want to create Subnet? (yes/no): "
+read sub
+if [[ "$sub" =~ ^[Yy] ]]; then
+    echo "Select type (Public/Private/Both):"
+    read type
+
+    case "$type" in
+    public)
+        subnet public
+        ;;
+    private)
+        subnet private
+        ;;
+    both) 
+        subnet public
+        subnet private
+        ;;
+    *)
+        echo "Invalid"
+        ;;
+    esac
+    fi
 
 
 #Internet gateway for VPC
@@ -135,7 +182,7 @@ aws ec2 describe-security-groups --query 'SecurityGroups[*].[GroupId, GroupName]
 echo "Select one or press enter to create SG: "
 read sg_id
 if [ -z "$sg_id" ]; then
-    sg_name=$(my-rand "$min" "$max")
+    sg_name=$(my_rand "$min" "$max")
     echo "The name of security group is $sg_name"
 
     sg_id=$(aws ec2 create-security-group --group-name $sg_name --description "My Security Group"\
@@ -161,6 +208,16 @@ show_vpc(){
 
 # #Function to delete VPC
 delete_vpc_resources() {
+    # aws ec2 describe-vpcs --query Vpcs[*].VpcId --output table
+    # wait
+
+    # if [ -z "$1" ]; then
+    #     echo "Enter VPC id"
+    #     read vpc_id
+    # else 
+    #     vpc_id=$1
+    # fi
+    
     local vpc_id=$1
     
     echo "Deleting resources for VPC: $vpc_id"
@@ -209,46 +266,6 @@ delete_vpc_resources() {
 
 
 
-# Dispatcher to call functions by name
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  if [[ -z "$1" ]]; then
-    echo "Choose an option:"
-    echo "1) Create VPC"
-    echo "2) Show VPCs"
-    echo "3) Delete VPC"
-    read -rp "Enter choice [1-3]: " choice
 
-    case $choice in
-      1)
-        echo -n "Enter min value for random number (default 1): "
-        read min
-        echo -n "Enter max value for random number (default 1000): "
-        read max
-        create_vpc "${min:-1}" "${max:-1000}"
-        ;;
-      2)
-        show_vpc
-        ;;
-      3)
-        echo -n "Enter VPC ID to delete: "
-        read vpc_id
-        delete_vpc_resources "$vpc_id"
-        ;;
-      *)
-        echo "Invalid choice."
-        exit 1
-        ;;
-    esac
-  else
-    if declare -f "$1" > /dev/null; then
-      func="$1"
-      shift
-      "$func" "$@"
-    else
-      echo "Function '$1' not found in $0"
-      exit 1
-    fi
-  fi
-fi
 
  
