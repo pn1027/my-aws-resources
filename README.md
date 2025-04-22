@@ -38,12 +38,14 @@ Click on the links below to view the screenshots
 
 2. [Creating VPC](Screenshot/VPC2.png)  
 
-3. [Creating Subnet(1)](Screenshot/VPC3.png) 
+3. [Creating Subnet(1)](Screenshot/VPC3.png)  
+
    [Creating Subnet(2)](Screenshot/VPC4.png)  
 
 4. [Internet gateway and Route Table](Screenshot/VPC5.png)  
 
-5. [Security Group(1)](Screenshot/VPC6.png)
+5. [Security Group(1)](Screenshot/VPC6.png)  
+
    [Security Group(2)](Screenshot/VPC7.png)  
 
 
