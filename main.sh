@@ -24,6 +24,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         show_vpc
         ;;
       3)
+        aws ec2 describe-vpcs --query 'Vpcs[*].{VPC_ID: VpcId}' --output table
         echo -n "Enter VPC ID to delete: "
         read vpc_id
         delete_vpc_resources "$vpc_id"

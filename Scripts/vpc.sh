@@ -70,36 +70,36 @@ echo "VPC name is $vpc_name"
 
 
 
-
+subnet_index=1 #global counter to keep subnet numbering unique
 #create subnets
 subnet(){
 
-local subnet_type=$1
-subnet_type=$(echo "$subnet_type" | tr '[:upper:]' '[:lower:]')
+    local subnet_type=$1
+    subnet_type=$(echo "$subnet_type" | tr '[:upper:]' '[:lower:]')
 
 
-echo "Number of ${subnet_type} subnets want to create: "
-read num_subnet
+    echo "Number of ${subnet_type} subnets want to create: "
+    read num_subnet
 
 
 for ((i=1;i<=num_subnet;i++)); do
-    echo -n "Enter Cidr for subnet $i(default 10.0.$i.0/24): "
+    echo -n "Enter Cidr for $subnet_type $i(default 10.0.${subnet_index}.0/24): "
     read sub_cidr
     if [ -z "$sub_cidr" ]; then
-        sub_cidr=10.0.$i.0/24
+        sub_cidr=10.0.${subnet_index}.0/24
     fi
 
-echo -n "Give availablity zone for subnet $i: (eg: us-east-1a) "
-read az
+        echo -n "Give availablity zone for subnet $i: (eg: us-east-1a) "
+        read az
 
-subnet_id=$(aws ec2 create-subnet \
-                --vpc-id $vpc_id\
-                --cidr-block $sub_cidr\
-                --availability-zone $az\
-                --region $region\
-                --query 'Subnet.SubnetId'\
-                --output text) 
-echo "Subnet created with id : $subnet_id"
+        subnet_id=$(aws ec2 create-subnet \
+                        --vpc-id $vpc_id\
+                        --cidr-block $sub_cidr\
+                        --availability-zone $az\
+                        --region $region\
+                        --query 'Subnet.SubnetId'\
+                        --output text) 
+        echo "Subnet created with id : $subnet_id"
 
 
 
@@ -118,15 +118,17 @@ echo "Subnet created with id : $subnet_id"
             aws ec2 create-tags --resources $subnet_id --tags "${tags_subnet[@]}" --region $region --output text
 
 
-if [ "$subnet_type" == "public" ];then
-    public_subnets+=("$subnet_id")
-else
-private_subnets+=("$subnet_id")
-fi
+        if [ "$subnet_type" == "public" ];then
+            public_subnets+=("$subnet_id")
+        else
+        private_subnets+=("$subnet_id")
+        fi
+
+((subnet_index++))
 done
 }
 
-
+#calling the subnet function
 echo "Do you want to create Subnet? (yes/no): "
 read sub
 if [[ "$sub" =~ ^[Yy] ]]; then
@@ -156,24 +158,38 @@ igw_id=$(aws ec2 create-internet-gateway --region $region --query 'InternetGatew
 echo "IGW id is $igw_id"
 aws ec2 attach-internet-gateway --vpc-id $vpc_id --internet-gateway-id $igw_id --region $region
 
+
+
 #Route table to make subnet public and private
 if [ ${#public_subnets[@]} -gt 0 ]; then
-public_route_table_id=$(aws ec2 create-route-table --vpc-id $vpc_id --query 'RouteTable.RouteTableId' --output text)
+public_route_table_id=$(aws ec2 create-route-table\
+                            --vpc-id $vpc_id\
+                            --region $region\
+                            --query 'RouteTable.RouteTableId'\
+                            --output text)
 echo "Public route table id is $public_route_table_id"
 
-aws ec2 create-route --route-table-id $public_route_table_id  --destination-cidr-block 0.0.0.0/0 --gateway-id $igw_id
+aws ec2 create-route\
+ --route-table-id $public_route_table_id\
+   --destination-cidr-block 0.0.0.0/0\
+    --gateway-id $igw_id\
+    --region $region
 
  for subnet_id in "${public_subnets[@]}"; do
-    aws ec2 associate-route-table --route-table-id $public_route_table_id --subnet-id $subnet_id
+    aws ec2 associate-route-table --route-table-id $public_route_table_id --subnet-id $subnet_id --region $region
     done
 fi 
 
-for subnet_id in "${private_subnets[@]}"; do
-    private_route_table_id=$(aws ec2 create-route-table --vpc-id $vpc_id --query 'RouteTable.RouteTableId' --output text)
-    echo "Private route table id is $private_route_table_id"
 
+if [ ${#private_subnets[@]} -gt 0 ]; then
+    private_route_table_id=$(aws ec2 create-route-table --vpc-id $vpc_id --region $region --query 'RouteTable.RouteTableId' --output text)
+    echo "Private route table Id: $private_route_table_id"
+
+for subnet_id in "${private_subnets[@]}"; do
     aws ec2 associate-route-table --route-table-id $private_route_table_id --subnet-id $subnet_id
 done
+fi
+
 
 # Security group name should be pallav-sg-04-13-2025-4576 
 echo "Create security group for VPC"
@@ -198,6 +214,7 @@ fi
 
 
 
+
 #Function to show VPCs
 show_vpc(){
     aws ec2 describe-vpcs --query Vpcs[*].VpcId --output table
@@ -208,15 +225,6 @@ show_vpc(){
 
 # #Function to delete VPC
 delete_vpc_resources() {
-    # aws ec2 describe-vpcs --query Vpcs[*].VpcId --output table
-    # wait
-
-    # if [ -z "$1" ]; then
-    #     echo "Enter VPC id"
-    #     read vpc_id
-    # else 
-    #     vpc_id=$1
-    # fi
     
     local vpc_id=$1
     
@@ -224,22 +232,26 @@ delete_vpc_resources() {
     
     # 1. Delete Security Groups
     echo "Deleting security groups..."
-    for sg in $(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" --query 'SecurityGroups[*].GroupId' --output text); do
-        aws ec2 delete-security-group --group-id "$sg"
-        echo "Deleted security group: $sg"
+    for sg in $(aws ec2 describe-security-groups \
+    --filters "Name=vpc-id,Values=$vpc_id" \
+              "Name=group-name,Values=*" \
+    --query "SecurityGroups[?GroupName!='default'].GroupId" \
+    --output text); do
+    aws ec2 delete-security-group --group-id "$sg"
+    echo "Deleted security group: $sg"
     done
     
     # 2. Delete Route Table Associations and Routes
     echo "Deleting route tables..."
-    for rt in $(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$vpc_id" --query 'RouteTables[*].RouteTableId' --output text); do
+    for rt in $(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$vpc_id" "Name=association.main,Values=false" --query 'RouteTables[*].RouteTableId' --output text); do
         # Delete route table associations
         for assoc in $(aws ec2 describe-route-tables --route-table-id "$rt" --query 'RouteTables[*].Associations[*].RouteTableAssociationId' --output text); do
             aws ec2 disassociate-route-table --association-id "$assoc"
         done
         # Delete route table if it's not the main one
-        if ! aws ec2 describe-route-tables --route-table-id "$rt" --query 'RouteTables[*].Associations[*].Main' --output text | grep -q "True"; then
             aws ec2 delete-route-table --route-table-id "$rt"
-        fi
+            echo "Deleted Route Table: $rt"
+        
     done
     
     # 3. Delete Internet Gateway
@@ -262,10 +274,3 @@ delete_vpc_resources() {
     aws ec2 delete-vpc --vpc-id "$vpc_id"
     echo "Successfully deleted VPC and all associated resources"
 }
-
-
-
-
-
-
- 
