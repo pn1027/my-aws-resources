@@ -14,6 +14,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
     case $choice in
       1)
+        echo
         echo -n "Enter min value for random number (default 1): "
         read min
         echo -n "Enter max value for random number (default 1000): "
@@ -21,10 +22,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         create_vpc "${min:-1}" "${max:-1000}"
         ;;
       2)
+        echo
         show_vpc
         ;;
       3)
-        aws ec2 describe-vpcs --query 'Vpcs[*].{VPC_ID: VpcId}' --output table
+        echo
+        aws ec2 describe-vpcs --query 'Vpcs[*].{Id: VpcId, Name: Tags[?Key==`Name`] | [0].Value}'  --output table
         echo -n "Enter VPC ID to delete: "
         read vpc_id
         delete_vpc_resources "$vpc_id"

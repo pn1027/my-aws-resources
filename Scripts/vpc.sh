@@ -24,7 +24,7 @@ echo "The region is $region"
 public_subnets=()
 private_subnets=()
 
-echo "Enter CIDR (Press enter for default cidr): "
+echo "Enter CIDR (Press enter for default cidr 10.0.0.0/16): "
 read cidr
 if [ -z "$cidr" ];then 
     cidr=10.0.0.0/16
@@ -52,10 +52,10 @@ aws ec2 create-tags\
    --region $region\
     --output text
 echo "VPC name is $vpc_name"
-
+echo
 
             # create tags for vpc
-            echo "enter number tags you want for VPC "
+            echo "Enter Number of tags you want for VPC "
             read num_tag
 
             declare -a tags
@@ -69,7 +69,7 @@ echo "VPC name is $vpc_name"
             aws ec2 create-tags --resources $vpc_id --tags "${tags[@]}" --region $region --output text
 
 
-
+echo
 subnet_index=1 #global counter to keep subnet numbering unique
 #create subnets
 subnet(){
@@ -83,13 +83,13 @@ subnet(){
 
 
 for ((i=1;i<=num_subnet;i++)); do
-    echo -n "Enter Cidr for $subnet_type $i(default 10.0.${subnet_index}.0/24): "
+    echo -n "Enter Cidr for $subnet_type $i (default 10.0.${subnet_index}.0/24): "
     read sub_cidr
     if [ -z "$sub_cidr" ]; then
         sub_cidr=10.0.${subnet_index}.0/24
     fi
 
-        echo -n "Give availablity zone for subnet $i: (eg: us-east-1a) "
+        echo -n "Give availablity zone for subnet $i (eg: us-east-1a): "
         read az
 
         subnet_id=$(aws ec2 create-subnet \
@@ -100,7 +100,7 @@ for ((i=1;i<=num_subnet;i++)); do
                         --query 'Subnet.SubnetId'\
                         --output text) 
         echo "Subnet created with id : $subnet_id"
-
+        echo
 
 
             #Adding tags to subnet
@@ -116,7 +116,7 @@ for ((i=1;i<=num_subnet;i++)); do
             tags_subnet+=(Key=${key},Value=${value})
             done
             aws ec2 create-tags --resources $subnet_id --tags "${tags_subnet[@]}" --region $region --output text
-
+            echo
 
         if [ "$subnet_type" == "public" ];then
             public_subnets+=("$subnet_id")
@@ -129,11 +129,13 @@ done
 }
 
 #calling the subnet function
+echo
 echo "Do you want to create Subnet? (yes/no): "
 read sub
 if [[ "$sub" =~ ^[Yy] ]]; then
     echo "Select type (Public/Private/Both):"
     read type
+    type=$(echo "$type" | tr '[:upper:]' '[:lower:]')
 
     case "$type" in
     public)
@@ -154,10 +156,11 @@ if [[ "$sub" =~ ^[Yy] ]]; then
 
 
 #Internet gateway for VPC
+echo
 igw_id=$(aws ec2 create-internet-gateway --region $region --query 'InternetGateway.InternetGatewayId' --output text)
 echo "IGW id is $igw_id"
 aws ec2 attach-internet-gateway --vpc-id $vpc_id --internet-gateway-id $igw_id --region $region
-
+echo
 
 
 #Route table to make subnet public and private
@@ -229,6 +232,7 @@ delete_vpc_resources() {
     local vpc_id=$1
     
     echo "Deleting resources for VPC: $vpc_id"
+    echo
     
     # 1. Delete Security Groups
     echo "Deleting security groups..."
@@ -242,6 +246,7 @@ delete_vpc_resources() {
     done
     
     # 2. Delete Route Table Associations and Routes
+    echo
     echo "Deleting route tables..."
     for rt in $(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$vpc_id" "Name=association.main,Values=false" --query 'RouteTables[*].RouteTableId' --output text); do
         # Delete route table associations
@@ -255,6 +260,7 @@ delete_vpc_resources() {
     done
     
     # 3. Delete Internet Gateway
+    echo
     echo "Deleting internet gateway..."
     for igw in $(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$vpc_id" --query 'InternetGateways[*].InternetGatewayId' --output text); do
         aws ec2 detach-internet-gateway --internet-gateway-id "$igw" --vpc-id "$vpc_id"
@@ -263,6 +269,7 @@ delete_vpc_resources() {
     done
     
     # 4. Delete Subnets
+    echo
     echo "Deleting subnets..."
     for subnet in $(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$vpc_id" --query 'Subnets[*].SubnetId' --output text); do
         aws ec2 delete-subnet --subnet-id "$subnet"
@@ -270,6 +277,7 @@ delete_vpc_resources() {
     done
     
     # 5. Finally Delete VPC
+    echo
     echo "Deleting VPC..."
     aws ec2 delete-vpc --vpc-id "$vpc_id"
     echo "Successfully deleted VPC and all associated resources"
