@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source ./Scripts/vpc.sh
+source ./Scripts/ec2.sh
 
 
 # Dispatcher to call functions by name
@@ -10,7 +11,9 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "1) Create VPC"
     echo "2) Show VPCs"
     echo "3) Delete VPC"
-    read -rp "Enter choice [1-3]: " choice
+    echo "4) Create EC2 Instance"
+    echo "5) Delete EC2 Instance"
+    read -rp "Enter choice [1-5]: " choice
 
     case $choice in
       1)
@@ -31,6 +34,14 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         echo -n "Enter VPC ID to delete: "
         read vpc_id
         delete_vpc_resources "$vpc_id"
+        ;;
+      4)
+        echo
+        create_ec2
+        ;;
+      5)
+        echo
+        ec2_delete
         ;;
       *)
         echo "Invalid choice."
