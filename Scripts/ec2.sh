@@ -8,8 +8,8 @@ create_ec2() {
     echo
 
     # Instance Type 
-    echo "List of Instance Types"
-    echo
+    echo "List of Instance Types: "
+   
     aws ec2 describe-instance-types\
         --filters Name=current-generation,Values=true\
         --query "InstanceTypes[*].InstanceType"\
@@ -78,29 +78,42 @@ create_ec2() {
 
     # Select subnet
     echo "Which subnet you want to create the EC2? (Public or Private):"
-    read subnet_type
-    subnet_type_lower=$(echo "$subnet_type" | tr '[:upper:]' '[:lower:]')
+read subnet_type
+subnet_type_lower=$(echo "$subnet_type" | tr '[:upper:]' '[:lower:]')
 
-    echo "Finding route tables for VPC: $vpc_id"
-   route_tables=$(aws ec2 describe-route-tables --filters Name=vpc-id,Values=$vpc_id --query 'RouteTables[*].RouteTableId' --output text)
+echo "Finding route tables for VPC: $vpc_id"
+route_tables=$(aws ec2 describe-route-tables --filters Name=vpc-id,Values=$vpc_id --query 'RouteTables[*].RouteTableId' --output text)
 
 # Check each Route Table for Internet Gateway
+subnet_ids=()
 for rt_id in $route_tables; do
     # Check if the route table has an internet gateway
     has_igw=$(aws ec2 describe-route-tables --route-table-ids $rt_id --query 'RouteTables[0].Routes[?starts_with(GatewayId, `igw-`)].GatewayId' --output text)
 
     # If IGW exists (Public route table)
     if [ "$subnet_type_lower" == "public" ] && [ -n "$has_igw" ]; then
-        aws ec2 describe-route-tables --route-table-ids $rt_id \
-            --query 'RouteTables[].Associations[].SubnetId' --output text
+        # Fetch the subnets associated with this route table
+        associated_subnets=$(aws ec2 describe-route-tables --route-table-ids $rt_id --query 'RouteTables[].Associations[].SubnetId' --output text)
+        subnet_ids+=($associated_subnets)
     fi
 
     # If NO IGW (Private route table)
     if [ "$subnet_type_lower" == "private" ] && [ -z "$has_igw" ]; then
-        aws ec2 describe-route-tables --route-table-ids $rt_id \
-            --query 'RouteTables[].Associations[].SubnetId' --output text
+        # Fetch the subnets associated with this route table
+        associated_subnets=$(aws ec2 describe-route-tables --route-table-ids $rt_id --query 'RouteTables[].Associations[].SubnetId' --output text)
+        subnet_ids+=($associated_subnets)
     fi
 done
+
+# Display subnets
+if [ ${#subnet_ids[@]} -gt 0 ]; then
+    echo "Subnets available for $subnet_type subnets:"
+    for subnet_id in "${subnet_ids[@]}"; do
+        echo "$subnet_id"
+    done
+else
+    echo "No subnets found for the selected type."
+fi
 
     echo
     echo "Enter Subnet ID to use:"
@@ -141,6 +154,9 @@ done
 
     echo
     echo "Instance launched successfully! Instance ID: $instance_id"
+
+    echo "Instance will terminate after 10 minutes"
+    (sleep 600 && aws ec2 terminate-instances --instance-id $instance_id && echo "EC@ instance $instance_id terminated. ") &
 }
 
 ec2_delete() {
