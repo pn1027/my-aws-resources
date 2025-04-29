@@ -137,10 +137,10 @@ auto_subnet(){
     subnet_id=$(aws ec2 create-subnet\
                 --vpc-id $vpc_id\
                 --cidr-block $sub_cidr --availability-zone us-east-1a\
-                --region $region
-                --query 'Subnet.SubnetId'
+                --region $region\
+                --query 'Subnet.SubnetId'\
                 --output text)
-    echo "Public subnet created with ID: $subnet_id"
+    echo "Public subnet $i created with ID: $subnet_id"
 
    aws ec2 create-tags --resources $subnet_id --tags Key=Name,Value="Public$i" --region $region --output text
 
@@ -270,7 +270,7 @@ if [ -z "$sg_id" ]; then
     aws ec2 authorize-security-group-ingress --group-id "$sg_id" --protocol tcp --port 80 --cidr 0.0.0.0/0
 fi
 
-aws ec2 describe-vpcs --vpc-id $vpc_id --output text
+aws ec2 describe-vpcs --vpc-id $vpc_id --output table
 }
 
 
@@ -341,4 +341,6 @@ delete_vpc_resources() {
     echo "Deleting VPC..."
     aws ec2 delete-vpc --vpc-id "$vpc_id"
     echo "Successfully deleted VPC and all associated resources"
+
+    aws ec2 describe-vpcs --query "Vpcs[*].{ID:VpcId, Name:Tags[?Key=='Name']|[0].Value}" --output table
 }

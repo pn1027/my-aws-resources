@@ -48,6 +48,23 @@ Click on the links below to view the screenshots
 
    [Security Group(2)](Screenshot/VPC7.png)  
 
+##EC2  
+
+Output Screenshot links  
+1. [Menu](Screenshot/EC2/Menu.png)  
+
+2. [Selecting VPC](Screenshot/EC2/VPC.png)  
+
+3. [Selecting Instance Type](Screenshot/EC2/InstanceType.png)  
+
+4. [Selecting AMI](Screenshot/EC2/AMI.png)  
+
+5. [Selecting or Creating Key pair(1)](Screenshot/EC2/KP.png)  
+
+6. [Selecting Subnet](Screenshot/EC2/Subnet.png)  
+
+7. [Selecting Security group and Launching instance](Screenshot/EC2/SG.png)
+
 
 
 
