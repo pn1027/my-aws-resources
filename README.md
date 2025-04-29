@@ -34,6 +34,8 @@ Instructions for setting up the project.
 
 Click on the links below to view the screenshots
 
+## VPC
+
 1. [Menu](Screenshot/VPC1.png)  
 
 2. [Creating VPC](Screenshot/VPC2.png)  
@@ -48,9 +50,8 @@ Click on the links below to view the screenshots
 
    [Security Group(2)](Screenshot/VPC7.png)  
 
-##EC2  
-
-Output Screenshot links  
+## EC2  
+  
 1. [Menu](Screenshot/EC2/Menu.png)  
 
 2. [Selecting VPC](Screenshot/EC2/VPC.png)  
