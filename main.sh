@@ -18,11 +18,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     case $choice in
       1)
         echo
-        echo -n "Enter min value for random number (default 1): "
-        read min
-        echo -n "Enter max value for random number (default 1000): "
-        read max
-        create_vpc "${min:-1}" "${max:-1000}"
+        # echo -n "Enter min value for random number (default 1): "
+        # read min
+        # echo -n "Enter max value for random number (default 1000): "
+        # read max
+        create_vpc 
+        # "${min:-1}" "${max:-1000}"
         ;;
       2)
         echo

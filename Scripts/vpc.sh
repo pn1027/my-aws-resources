@@ -35,7 +35,7 @@ echo "The cidr is : $cidr"
 
 min=${1:-1}
 max=${2:-1000}
-vpc_name=$(my_rand "$1" "$2")
+vpc_name=$(my_rand 10 20)
 
 # Create VPC
 vpc_id=$(aws ec2 create-vpc\
@@ -55,18 +55,19 @@ echo "VPC name is $vpc_name"
 echo
 
             # create tags for vpc
-            echo "Enter Number of tags you want for VPC "
-            read num_tag
 
-            declare -a tags
-            for ((i=0; i<num_tag; i++)); do
-                echo "Enter Key:"
-                read key
-                echo "Enter Value:"
-                read value
-                tags+=(Key=${key},Value=${value})
-            done
-            aws ec2 create-tags --resources $vpc_id --tags "${tags[@]}" --region $region --output text
+            # echo "Enter Number of tags you want for VPC "
+            # read num_tag
+            # declare -a tags
+            # for ((i=0; i<num_tag; i++)); do
+            #     echo "Enter Key:"
+            #     read key
+            #     echo "Enter Value:"
+            #     read value
+            #     tags+=(Key=${key},Value=${value})
+            # done
+
+            aws ec2 create-tags --resources $vpc_id --tags Key="Date",Value="$(date +%D)" --region $region --output text
 
 
 echo
@@ -128,30 +129,87 @@ for ((i=1;i<=num_subnet;i++)); do
 done
 }
 
+auto_subnet(){
+    echo "Creating Subnets automatically..."
+
+    for i in {1..2}; do
+    sub_cidr=10.0.${subnet_index}.0/24
+    subnet_id=$(aws ec2 create-subnet\
+                --vpc-id $vpc_id\
+                --cidr-block $sub_cidr --availability-zone us-east-1a\
+                --region $region
+                --query 'Subnet.SubnetId'
+                --output text)
+    echo "Public subnet created with ID: $subnet_id"
+
+   aws ec2 create-tags --resources $subnet_id --tags Key=Name,Value="Public$i" --region $region --output text
+
+        public_subnets+=("$subnet_id")
+        ((subnet_index++))
+    done
+
+    # Create 2 private subnets
+    for i in {1..2}; do
+        sub_cidr="10.0.${subnet_index}.0/24"
+        subnet_id=$(aws ec2 create-subnet \
+                        --vpc-id $vpc_id \
+                        --cidr-block $sub_cidr \
+                        --availability-zone us-east-1b \
+                        --region $region \
+                        --query 'Subnet.SubnetId' \
+                        --output text)
+        echo "Private Subnet $i created with id: $subnet_id"
+        
+        # Tagging private subnets with Private1, Private2
+        aws ec2 create-tags --resources $subnet_id --tags Key=Name,Value="Private$i" --region $region --output text
+
+        private_subnets+=("$subnet_id")
+        ((subnet_index++))
+    done
+}
+
+
+
+
+
 #calling the subnet function
 echo
 echo "Do you want to create Subnet? (yes/no): "
 read sub
 if [[ "$sub" =~ ^[Yy] ]]; then
-    echo "Select type (Public/Private/Both):"
-    read type
-    type=$(echo "$type" | tr '[:upper:]' '[:lower:]')
+    echo "Want to create Maunally or Automatically? (auto/manual): "
+    read choice
+    choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+        
+        case "$choice" in
+        auto)
+            auto_subnet
+            ;;
+        manual)
+            echo "Select type (Public/Private/Both):"
+            read type
+            type=$(echo "$type" | tr '[:upper:]' '[:lower:]')
 
-    case "$type" in
-    public)
-        subnet public
-        ;;
-    private)
-        subnet private
-        ;;
-    both) 
-        subnet public
-        subnet private
-        ;;
-    *)
-        echo "Invalid"
-        ;;
-    esac
+            case "$type" in
+            public)
+                subnet public
+                ;;
+            private)
+                subnet private
+                ;;
+            both) 
+                subnet public
+                subnet private
+                ;;
+            *)
+                echo "Invalid"
+                ;;
+            esac
+            ;;
+        *)
+            echo "Invalid Choice"
+            ;;
+            esac
     fi
 
 
@@ -211,6 +269,8 @@ if [ -z "$sg_id" ]; then
     aws ec2 authorize-security-group-ingress --group-id "$sg_id" --protocol tcp --port 22 --cidr 0.0.0.0/0
     aws ec2 authorize-security-group-ingress --group-id "$sg_id" --protocol tcp --port 80 --cidr 0.0.0.0/0
 fi
+
+aws ec2 describe-vpcs --vpc-id $vpc_id --output text
 }
 
 

@@ -1,6 +1,14 @@
 #!/bin/bash
 
 create_ec2() {
+
+    aws ec2 describe-vpcs --query 'Vpcs[*].{Id: VpcId, Name: Tags[?Key==`Name`] | [0].Value}'  --output table
+    echo "Enter VPC ID: "
+    read vpc_id
+    echo
+    echo "This is the selected $vpc_id"
+    echo
+
     # Name and Tags
     echo
     echo "Enter a Name tag for your EC2 instance:"
@@ -13,7 +21,7 @@ create_ec2() {
     aws ec2 describe-instance-types\
         --filters Name=current-generation,Values=true\
         --query "InstanceTypes[*].InstanceType"\
-        --output text | tr '\t' '\n' | grep 'micro'
+        --output text | tr '\t' '\n' | grep 'micro' | head -n 4
     echo
     echo "Enter the instance type you want to use:"
     read InstanceType
@@ -21,7 +29,7 @@ create_ec2() {
 
     # AMI
     echo
-    aws ec2 describe-images --owners amazon --filter "Name=name,Values=al2023-ami-2023.*" --query 'Images[*].[CreationDate,ImageId,Name]' --output table
+    aws ec2 describe-images --owners amazon --filter "Name=name,Values=al2023-ami-2023.*" --query 'Images[*].[CreationDate,ImageId,Name]' --output table | sort -r | head -n 10
     echo "Write AMI or press enter to use the default ami"
     read ami
     if [ -z "$ami" ]; then
@@ -69,13 +77,6 @@ create_ec2() {
     echo "The KeyPair ID is: $KeyPairID"
 
     # Network Settings
-    aws ec2 describe-vpcs --query 'Vpcs[*].{Id: VpcId, Name: Tags[?Key==`Name`] | [0].Value}'  --output table
-    echo "Enter VPC ID: "
-    read vpc_id
-    echo
-    echo "This is the selected $vpc_id"
-    echo
-
     # Select subnet
     echo "Which subnet you want to create the EC2? (Public or Private):"
 read subnet_type
