@@ -1,5 +1,6 @@
 #!/bin/bash
 
+user_data_option=""
 create_ec2() {
 
     aws ec2 describe-vpcs --query 'Vpcs[*].{Id: VpcId, Name: Tags[?Key==`Name`] | [0].Value}'  --output table
@@ -41,7 +42,7 @@ create_ec2() {
     # Key Pair (Select or Create new)
     echo
     aws ec2 describe-key-pairs --query KeyPairs[*].[KeyPairId,KeyName] --output table
-    echo "Select or Press Enter to Create Key Pair"
+    echo "Type Name of KeyPair or Press Enter to Create Key Pair"
     read Keypair
 
     if [ -z "$Keypair" ]; then
@@ -135,10 +136,15 @@ fi
     read sg
     echo "Selected Security Group: $sg"
 
+############################################################################################
+    #user data section
+   
+#############################################################################################################
+
     echo
     echo "Launching EC2 instance..."
 
-    instance_id=$(aws ec2 run-instances \
+    eval "instance_id=$(aws ec2 run-instances \
         --image-id "$ami" \
         --instance-type "$InstanceType" \
         --key-name "$(aws ec2 describe-key-pairs --key-pair-ids "$KeyPairID" --query 'KeyPairs[0].KeyName' --output text)" \
@@ -146,8 +152,9 @@ fi
         --security-group-ids "$sg" \
         --associate-public-ip-address \
         --count 1 \
+        --user-data file://Scripts/user_data_scripts/apache.sh\
         --query 'Instances[0].InstanceId' \
-        --output text)
+        --output text)"
 
     aws ec2 create-tags \
         --resources "$instance_id" \
@@ -157,7 +164,7 @@ fi
     echo "Instance launched successfully! Instance ID: $instance_id"
 
     echo "Instance will terminate after 10 minutes"
-    (sleep 600 && aws ec2 terminate-instances --instance-id $instance_id && echo "EC@ instance $instance_id terminated. ") &
+    (sleep 800 && aws ec2 terminate-instances --instance-id $instance_id && echo "EC2 instance $instance_id terminated. ") &
 }
 
 ec2_delete() {
