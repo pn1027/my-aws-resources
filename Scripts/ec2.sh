@@ -122,7 +122,7 @@ fi
     read subnet_id_selected
     echo "Selected Subnet: $subnet_id_selected"
 
-    # Assign Security Group
+# Assign Security Group
     echo
     echo "Security Groups for VPC: $vpc_id"
     echo
@@ -135,11 +135,26 @@ fi
     echo "Enter Security Group ID to use:"
     read sg
     echo "Selected Security Group: $sg"
+###################################################################################################################
+echo "Choose want to use pre-defined user-data or create custom one:"
+echo "1. Use pre-defined Apache Script"
+echo "2. Make Custom one"
+read choice
+    case $choice in
+        1) 
+            user_data_file="Scripts/user_data_scripts/apache.sh"
+            ;;
+        2)
+            echo "Enter full path to your custom user-data script:"
+            read custom_path
+            user_data_file="$custom_path"
+            ;;
+        *)
+            echo "Invalid choice. Defaulting to Apache script."
+            user_data_file="Scripts/user_data_file/apache.sh"
+            ;;
+    esac
 
-############################################################################################
-    #user data section
-   
-#############################################################################################################
 
     echo
     echo "Launching EC2 instance..."
@@ -152,7 +167,7 @@ fi
         --security-group-ids "$sg" \
         --associate-public-ip-address \
         --count 1 \
-        --user-data file://Scripts/user_data_scripts/apache.sh\
+        --user-data file://$user_data_file\
         --query 'Instances[0].InstanceId' \
         --output text)"
 
@@ -163,9 +178,17 @@ fi
     echo
     echo "Instance launched successfully! Instance ID: $instance_id"
 
+    public_ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query "Reservations[0].Instances[0].PublicIpAddress"\
+                --output text)
+    echo "Apache server access at: http://$public_ip"
+
+
+
     echo "Instance will terminate after 10 minutes"
     (sleep 800 && aws ec2 terminate-instances --instance-id $instance_id && echo "EC2 instance $instance_id terminated. ") &
 }
+
+######################################################################################################################
 
 ec2_delete() {
     echo "Listing available EC2 instances..."
