@@ -31,7 +31,8 @@ create_ec2() {
     # AMI
     echo
     aws ec2 describe-images --owners amazon --filter "Name=name,Values=al2023-ami-2023.*" --query 'Images[*].[CreationDate,ImageId,Name]' --output table | sort -r | head -n 10
-    echo "Write AMI or press enter to use the default ami"
+    echo
+    echo "Write AMI OR press ENTER to use the default ami"
     read ami
     if [ -z "$ami" ]; then
         ami="ami-0e449927258d45bc4"
@@ -79,6 +80,7 @@ create_ec2() {
 
     # Network Settings
     # Select subnet
+    echo
     echo "Which subnet you want to create the EC2? (Public or Private):"
 read subnet_type
 subnet_type_lower=$(echo "$subnet_type" | tr '[:upper:]' '[:lower:]')
@@ -136,9 +138,11 @@ fi
     read sg
     echo "Selected Security Group: $sg"
 ###################################################################################################################
+echo
 echo "Choose want to use pre-defined user-data or create custom one:"
 echo "1. Use pre-defined Apache Script"
 echo "2. Make Custom one"
+echo "3. Use the user-data from bash repo"
 read choice
     case $choice in
         1) 
@@ -149,6 +153,10 @@ read choice
             read custom_path
             user_data_file="$custom_path"
             ;;
+        3) 
+            user_data_file="Scripts/user_data_scripts/render_markdown.sh"
+            ;;
+
         *)
             echo "Invalid choice. Defaulting to Apache script."
             user_data_file="Scripts/user_data_file/apache.sh"
