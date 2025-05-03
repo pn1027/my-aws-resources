@@ -159,7 +159,7 @@ read choice
 
         *)
             echo "Invalid choice. Defaulting to Apache script."
-            user_data_file="Scripts/user_data_file/apache.sh"
+            user_data_file="Scripts/user_data_scripts/apache.sh"
             ;;
     esac
 
@@ -184,7 +184,33 @@ read choice
         --tags Key=Name,Value="$instance_name"
 
     echo
-    echo "Instance launched successfully! Instance ID: $instance_id"
+    echo "Give name to SNS Topic: "
+read name
+ARN=$(aws sns create-topic --name $name --query TopicArn --output text)
+echo "$ARN"
+
+
+echo "How many SNS Subscribers you want to create?"
+read num 
+
+for i in $(seq 1 $num); do
+
+        echo "[$i] Enter the Protocol Service (e.g. email, sms, https): "
+        read protocol
+        echo "[$i] Enter the Endpoint (email address, phone in +<countrycode><Phone no.>, http) "
+        read endpoint
+        aws sns subscribe\
+        --topic-arn $ARN\
+        --protocol $protocol\
+        --notification-endpoint $endpoint\
+        --query SubscriptionArn --output text
+
+        echo "Instance launched successfully! Instance ID: $instance_id"
+        read Message
+        Id=$(aws sns publish --topic-arn $ARN --message "$Message" --query 'MessageId' --output text)
+        echo "Id of message send $Id"
+
+done
 
     public_ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query "Reservations[0].Instances[0].PublicIpAddress"\
                 --output text)
@@ -194,6 +220,9 @@ read choice
 
     echo "Instance will terminate after 10 minutes"
     (sleep 800 && aws ec2 terminate-instances --instance-id $instance_id && echo "EC2 instance $instance_id terminated. ") &
+
+
+
 }
 
 ######################################################################################################################
