@@ -35,10 +35,26 @@ create_ec2() {
     echo "Write AMI OR press ENTER to use the default ami"
     read ami
     if [ -z "$ami" ]; then
-        ami="ami-0e449927258d45bc4"
+        echo "Retriving AMI from Parameter store"
+        retrieved_ami=`MSYS_NO_PATHCONV=1 aws ssm get-parameter --name /pallav/ec2/ami --query 'Parameter.Value' --output text`
+
+        if [[ $retrieved_ami == ami-* ]]; then
+            ami="$retrieved_ami"
+            echo "Retrived AMI from SSM: $ami"
+        else
+            ami="ami-0e449927258d45bc4"
+            echo "Using default hardcoded ami: $ami"
+        fi
     fi
 
-    echo "Using ami: $ami"
+   echo
+   echo "Storing AMI ID in Parameter store..."
+   MSYS_NO_PATHCONV=1 aws ssm put-parameter --name '/pallav/ec2/ami' --type String --value $ami --overwrite
+   if [ $? -eq 0 ]; then
+        echo "AMI stored in SSM"
+    else 
+        echo "Failed to store"
+    fi
 
     # Key Pair (Select or Create new)
     echo
