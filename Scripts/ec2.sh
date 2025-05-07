@@ -34,6 +34,7 @@ create_ec2() {
     echo
     echo "Write AMI OR press ENTER to use the default ami"
     read ami
+#####################################################################################################################
     if [ -z "$ami" ]; then
         echo "Retriving AMI from Parameter store"
         retrieved_ami=`MSYS_NO_PATHCONV=1 aws ssm get-parameter --name /pallav/ec2/ami --query 'Parameter.Value' --output text`
@@ -50,11 +51,8 @@ create_ec2() {
    echo
    echo "Storing AMI ID in Parameter store..."
    MSYS_NO_PATHCONV=1 aws ssm put-parameter --name '/pallav/ec2/ami' --type String --value $ami --overwrite
-   if [ $? -eq 0 ]; then
-        echo "AMI stored in SSM"
-    else 
-        echo "Failed to store"
-    fi
+
+######################################################################################################################
 
     # Key Pair (Select or Create new)
     echo
@@ -159,6 +157,7 @@ echo "Choose want to use pre-defined user-data or create custom one:"
 echo "1. Use pre-defined Apache Script"
 echo "2. Make Custom one"
 echo "3. Use the user-data from bash repo"
+echo "4. Use S3 Apache Script"
 read choice
     case $choice in
         1) 
@@ -171,6 +170,9 @@ read choice
             ;;
         3) 
             user_data_file="Scripts/user_data_scripts/render_markdown.sh"
+            ;;
+        4)
+            user_data_file="Scripts/user_data_scripts/s3_apache.sh"
             ;;
 
         *)
@@ -199,35 +201,44 @@ read choice
         --resources "$instance_id" \
         --tags Key=Name,Value="$instance_name"
 
+     echo "EC2 instance $instance_id launched and tagged successfully!"
+
+####################################################################################################################
+
     echo
     echo "Give name to SNS Topic: "
-read name
-ARN=$(aws sns create-topic --name $name --query TopicArn --output text)
-echo "$ARN"
+    read name
+    ARN=$(aws sns create-topic --name $name --query TopicArn --output text)
+    echo "SNS topic created: $ARN"
 
 
-echo "How many SNS Subscribers you want to create?"
-read num 
+    echo "How many SNS Subscribers you want to create?"
+    read num 
 
-for i in $(seq 1 $num); do
+    for i in $(seq 1 $num); do
 
-        echo "[$i] Enter the Protocol Service (e.g. email, sms, https): "
-        read protocol
-        echo "[$i] Enter the Endpoint (email address, phone in +<countrycode><Phone no.>, http) "
-        read endpoint
-        aws sns subscribe\
-        --topic-arn $ARN\
-        --protocol $protocol\
-        --notification-endpoint $endpoint\
-        --query SubscriptionArn --output text
+            echo "[$i] Enter the Protocol Service (e.g. email, sms, https): "
+            read protocol
+            echo "[$i] Enter the Endpoint (email address, phone in +<countrycode><Phone no.>, http) "
+            read endpoint
+            
+            subscription_arn=$(aws sns subscribe\
+            --topic-arn $ARN\
+            --protocol $protocol\
+            --notification-endpoint $endpoint\
+            --query SubscriptionArn --output text)
 
-        echo "Instance launched successfully! Instance ID: $instance_id"
-        read Message
-        Id=$(aws sns publish --topic-arn $ARN --message "$Message" --query 'MessageId' --output text)
-        echo "Id of message send $Id"
+            echo "Subscription created: $subscrition_arn"
 
-done
+    done
 
+    echo
+    echo "Enter Message to be Sent to all subscribers: "
+    read Message
+    Id=$(aws sns publish --topic-arn $ARN --message "$Message" --query 'MessageId' --output text)
+    echo "Message sent with ID: $Id"
+
+#####################################################################################################################
     public_ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query "Reservations[0].Instances[0].PublicIpAddress"\
                 --output text)
     echo "Apache server access at: http://$public_ip"

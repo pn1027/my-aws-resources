@@ -2,6 +2,7 @@
 
 source ./Scripts/vpc.sh
 source ./Scripts/ec2.sh
+source ./Scripts/S3.sh
 
 
 # Dispatcher to call functions by name
@@ -13,7 +14,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "3) Delete VPC"
     echo "4) Create EC2 Instance"
     echo "5) Delete EC2 Instance"
-    read -rp "Enter choice [1-5]: " choice
+    echo "6) Create S3 Bucket and Upload Website"
+    read -rp "Enter choice [1-6]: " choice
 
     case $choice in
       1)
@@ -43,6 +45,10 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
       5)
         echo
         ec2_delete
+        ;;
+       6)
+        echo
+        create_s3
         ;;
       *)
         echo "Invalid choice."
