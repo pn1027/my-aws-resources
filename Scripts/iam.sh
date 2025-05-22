@@ -67,7 +67,7 @@ aws iam create-role \
 
 aws iam attach-role-policy \
     --role-name "$ROLE_NAME" \
-    --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess
+    --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
 
 
 rm -f "${TRUST_POLICY}"
@@ -77,8 +77,3 @@ Account=$(aws sts get-caller-identity --query "Account" --output text)
 Signin="https://$Account.signin.aws.amazon.com/console"
 echo
 echo "Url to Sign in $Signin"
-
-
-
-# delete_user(){
-# }
