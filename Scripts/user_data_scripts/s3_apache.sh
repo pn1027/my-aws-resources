@@ -7,10 +7,12 @@ dnf install -y httpd awscli
 systemctl start httpd
 systemctl enable httpd
 
-S3_BUCKET="ec2-website-bucket-05"
+S3_BUCKET="ec2-website-bucket-07"
 
 echo "Downloading index.html from S3 bucket..."
 aws s3 cp s3://$S3_BUCKET/index.html /var/www/html/index.html
+rm -f /var/www/html/index.html.* /var/www/html/welcome.conf
+systemctl restart httpd
 
 if [ $? -eq 0 ]; then
     echo "Successfully downloaded index.html from S3"

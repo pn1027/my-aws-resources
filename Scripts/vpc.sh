@@ -253,7 +253,6 @@ fi
 
 
 # Security group name should be pallav-sg-04-13-2025-4576 
-echo "Create security group for VPC"
 aws ec2 describe-security-groups --query 'SecurityGroups[*].[GroupId, GroupName]' --output table
 
 echo "Select one or press enter to create SG: "

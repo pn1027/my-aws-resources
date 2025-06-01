@@ -2,8 +2,7 @@
 #!/bin/bash
 
 create_s3() {
-    timestamp=$(date +%m)
-    default_bucket_name="ec2-website-bucket-$timestamp"
+    default_bucket_name="ec2-website-bucket-07"
     
     echo "Enter S3 bucket name (or press Enter for default: $default_bucket_name):"
     read bucket_name

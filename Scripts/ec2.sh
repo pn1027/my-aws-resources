@@ -3,6 +3,19 @@
 user_data_option=""
 create_ec2() {
 
+    echo "Enter 1 to create instance by launch template or 2 for Manual"
+    read choice 
+    case "$choice" in
+    1)
+    echo "Available Launch Templates:"
+    aws ec2 describe-launch-templates --query 'LaunchTemplates[*].{Id: LaunchTemplateId,Name: LaunchTemplateName}' --output json
+    echo "Enter Launch template ID"
+    read id
+
+    aws ec2 run-instances\
+    --launch-template LaunchTemplateId=$id,Version=1
+    ;;
+    2)
     aws ec2 describe-vpcs --query 'Vpcs[*].{Id: VpcId, Name: Tags[?Key==`Name`] | [0].Value}'  --output table
     echo "Enter VPC ID: "
     read vpc_id
@@ -182,6 +195,29 @@ read choice
     esac
 
 
+
+# aws iam create-role --role-name EC2-S3-Access-Role --assume-role-policy-document '{
+#   "Version": "2012-10-17",
+#   "Statement": [
+#     {
+#       "Effect": "Allow",
+#       "Principal": {
+#         "Service": "ec2.amazonaws.com"
+#       },
+#       "Action": "sts:AssumeRole"
+#     }
+#   ]
+# }'
+
+# aws iam attach-role-policy --role-name EC2-S3-Access-Role --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+# aws iam create-instance-profile --instance-profile-name EC2-S3-Profile
+# aws iam add-role-to-instance-profile --instance-profile-name EC2-S3-Profile --role-name EC2-S3-Access-Role
+
+# sleep 10
+
+
+
     echo
     echo "Launching EC2 instance..."
 
@@ -196,47 +232,49 @@ read choice
         --user-data file://$user_data_file\
         --query 'Instances[0].InstanceId' \
         --output text)"
-
+ # --iam-instance-profile Name=EC2-S3-Profile \
     aws ec2 create-tags \
         --resources "$instance_id" \
         --tags Key=Name,Value="$instance_name"
 
      echo "EC2 instance $instance_id launched and tagged successfully!"
+     ;;
+     esac
 
 ####################################################################################################################
 
-    echo
-    echo "Give name to SNS Topic: "
-    read name
-    ARN=$(aws sns create-topic --name $name --query TopicArn --output text)
-    echo "SNS topic created: $ARN"
+    # echo
+    # echo "Give name to SNS Topic: "
+    # read name
+    # ARN=$(aws sns create-topic --name $name --query TopicArn --output text)
+    # echo "SNS topic created: $ARN"
 
 
-    echo "How many SNS Subscribers you want to create?"
-    read num 
+    # echo "How many SNS Subscribers you want to create?"
+    # read num 
 
-    for i in $(seq 1 $num); do
+    # for i in $(seq 1 $num); do
 
-            echo "[$i] Enter the Protocol Service (e.g. email, sms, https): "
-            read protocol
-            echo "[$i] Enter the Endpoint (email address, phone in +<countrycode><Phone no.>, http) "
-            read endpoint
+    #         echo "[$i] Enter the Protocol Service (e.g. email, sms, https): "
+    #         read protocol
+    #         echo "[$i] Enter the Endpoint (email address, phone in +<countrycode><Phone no.>, http) "
+    #         read endpoint
             
-            subscription_arn=$(aws sns subscribe\
-            --topic-arn $ARN\
-            --protocol $protocol\
-            --notification-endpoint $endpoint\
-            --query SubscriptionArn --output text)
+    #         subscription_arn=$(aws sns subscribe\
+    #         --topic-arn $ARN\
+    #         --protocol $protocol\
+    #         --notification-endpoint $endpoint\
+    #         --query SubscriptionArn --output text)
 
-            echo "Subscription created: $subscrition_arn"
+    #         echo "Subscription created: $subscrition_arn"
 
-    done
+    # done
 
-    echo
-    echo "Enter Message to be Sent to all subscribers: "
-    read Message
-    Id=$(aws sns publish --topic-arn $ARN --message "$Message" --query 'MessageId' --output text)
-    echo "Message sent with ID: $Id"
+    # echo
+    # echo "Enter Message to be Sent to all subscribers: "
+    # read Message
+    # Id=$(aws sns publish --topic-arn $ARN --message "$Message" --query 'MessageId' --output text)
+    # echo "Message sent with ID: $Id"
 
 #####################################################################################################################
     public_ip=$(aws ec2 describe-instances --instance-ids "$instance_id" --query "Reservations[0].Instances[0].PublicIpAddress"\
@@ -245,8 +283,8 @@ read choice
 
 
 
-    echo "Instance will terminate after 10 minutes"
-    (sleep 800 && aws ec2 terminate-instances --instance-id $instance_id && echo "EC2 instance $instance_id terminated. ") &
+    # echo "Instance will terminate after 10 minutes"
+    # (sleep 800 && aws ec2 terminate-instances --instance-id $instance_id && echo "EC2 instance $instance_id terminated. ") &
 
 
 

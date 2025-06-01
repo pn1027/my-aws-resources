@@ -3,6 +3,7 @@
 echo "Give name to user: "
 read user
 aws iam create-user --user-name $user
+USER_ARN=$(aws iam get-user --user-name "$user" --query 'User.Arn' --output text)
 
 echo "Password you want to create: "
 read Password
@@ -47,7 +48,6 @@ aws iam attach-user-policy --user-name $user --policy-arn $policy
 
 read -rp "Enter Role name: " ROLE_NAME
 echo "Creating role: $ROLE_NAME"
-USER_ARN=$(aws iam get-user --user-name "$user" --query 'User.Arn' --output text)
 TRUST_POLICY="trust-${ROLE_NAME}.json"
 cat > "${TRUST_POLICY}" <<EOF
 {
